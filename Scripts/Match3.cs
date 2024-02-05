@@ -78,7 +78,7 @@ namespace Match3 {
                 //audioManager.PlayDeselect();
             } else if (selectedGem == Vector2Int.one * -1) {//check if no gem is selected, if so select
                 SelectGem(gridPos);
-            Debug.Log("selected" + selectedGem.ToString());
+            Debug.Log("selected" + selectedGem.ToString() + " " + "Value" + GetGemTypeValue(selectedGem).ToString());
                 //audioManager.PlaySelect();
             } else {//if a gem is already selected, check if selected gem is adjacent
                 if (adjacentPositions.Contains(selectedGem)) {
@@ -98,47 +98,79 @@ namespace Match3 {
         }
  
         IEnumerator RunGameLoop(Vector2Int gridPosA, Vector2Int gridPosB) {
+            //if either gridpos is a vault at value 8, return
+            if (GetGemTypeValue(gridPosA) == 8 || GetGemTypeValue(gridPosB) == 8) yield break;
             yield return StartCoroutine(SwapGems(gridPosA, gridPosB));
             // Matches?
             //matches = FindMatches();
             List<Vector2Int> connected = new List<Vector2Int>();
+            List<Vector2Int> connectedInside = new List<Vector2Int>();
             //if there are no matches, swap back and return
-            Debug.Log("entering possible infinite loop");
             matches = isConnected(gridPosA, true);
+            var gemA = grid.GetValue(gridPosA.x, gridPosA.y).GetValue();
+            var gemB = grid.GetValue(gridPosB.x, gridPosB.y).GetValue();
             if (matches.Count > 0){
                 updated.Add(gridPosA);
+                //if there's a match on gridPosA we still need to check if there is a match on gridPosB, so do that
+         
+            }       
+            connectedInside = isConnected(gridPosB, true);
+            if (connectedInside.Count > 0){
+                updated.Add(gridPosB);  
+                for (int i = 0; i < connectedInside.Count; i++){         //add all of the values of connectedinside to connected if there are any
+                matches.Add(connectedInside[i]);
             }
-            //if there are no matches check gridPosB for matches
-            if (matches.Count == 0) {
-                matches = isConnected(gridPosB, true);
-                if (matches.Count > 0){
-                    updated.Add(gridPosB);
-                }
-                //if there are no matches swap back and return
-                if (matches.Count == 0) {
-                    StartCoroutine(SwapGems(gridPosB, gridPosA));
-                    DeselectGem();
-                    yield break;
-                }
             }
+            
+            
+   
 
             // TODO: Calculate score
             // Make Gems explode
             do{
                 //load gridpos gem into a variable
-                var gem = grid.GetValue(gridPosA.x, gridPosA.y).GetValue();
-                //upgrade it
-                UpgradeGem(gem);
+          
+                //upgrade it if it was matched
+                if (matches.Count > 0 && updated.Contains(gridPosA)){
+                    Debug.Log("line 139");
+                    UpgradeGem(gemA);
+                    matches.Remove(gridPosA);
+                }
+                //upgrade gridposB gem if it was matched
                 
+                if (matches.Count > 0 && updated.Contains(gridPosB)){
+                    Debug.Log("line 145");
+                    UpgradeGem(gemB);
+                    matches.Remove(gridPosB);
+                }
+
+                if (matches.Count == 0) {
+                    StartCoroutine(SwapGems(gridPosB, gridPosA));
+                    DeselectGem();
+                    yield break;
+                }
                 
-                yield return new WaitForSeconds(0.5f); //wait and see if the upgrade happened before doing anything else
+                //yield return new WaitForSeconds(0.5f); //wait and see if the upgrade happened before doing anything else
                 //if there are matches, explode them
                 yield return StartCoroutine(ExplodeGems(matches));
 //check the update list for gems to upgrade and insert them before making the gems fall
-                for (int i = 0; i < update.Count; i++)
+                
+                for (int i = 0; i < updated.Count; i++)
                 {
-                    Vector2Int pos = update[i];
-                    //load gem object from pos
+                    Vector2Int pos = updated[i];
+
+                    //check if pos is connected to anything and upgrade it if it is
+                    List<Vector2Int> connectedAgain = isConnected(pos, true);
+                    if (connectedAgain.Count > 0){
+                        updated.Add(pos);
+                        UpgradeGem(pos, GetGemTypeValue(pos));
+                        connectedAgain.Remove(pos);
+                    }
+                    //then explode the gems that are not upgraded
+                    if (connectedAgain.Count > 0){
+
+                        yield return StartCoroutine(ExplodeGems(connectedAgain));
+                    }
                     
                 }
                 
@@ -155,7 +187,30 @@ namespace Match3 {
                     //if there are no matches, continue
                     if (matches.Count == 0) continue;
                     //if there are matches, explode them
+                    //for each match, upgrade the gem and explode the others
+                    bool upgraded = false;
+                    for (int j = 0; j < matches.Count; j++)
+                    {
+                        Vector2Int match = matches[j];
+                        if (match == pos && !upgraded)
+                        {
+                            updated.Add(pos);
+                            UpgradeGem(pos, GetGemTypeValue(pos));
+                            upgraded = true;
+                        }
+                        else if (!upgraded)
+                        {
+                            updated.Add(pos);
+                            var gem = grid.GetValue(pos.x, pos.y).GetValue();
+                            UpgradeGem(gem);
+                            Debug.Log("upgraded gem at " + pos.ToString());
+                            upgraded = true;
+                        }
+                    }
+
                     yield return StartCoroutine(ExplodeGems(matches));
+
+
 
                     // Make gems fall
                     yield return StartCoroutine(MakeGemsFall());
@@ -166,35 +221,41 @@ namespace Match3 {
             // TODO: Check if game is over
  
             DeselectGem();
+            update.Clear();
+            updated.Clear();
         }
- 
+         void UpgradeGem(Gem gem)
+        {   
+            //get the x and y position of the gem
+            if (gem == null) return;
+            var x = (int) gem.transform.position.x;
+            var y = (int) gem.transform.position.y;
+            int typeValue = gem.Value;
+           //destroy the gem
+           grid.SetValue(x, y, null);
+            Destroy(gem.gameObject);
+            //replace the gridobject with a new one
+            if (typeValue != 8){
+                CreateGem(x, y, typeValue);
+                }
+            //if the grid value is null let us know
+            if (grid.GetValue(x, y) == null) Debug.Log("grid value is null");
+        }
+
         void UpgradeGem(Vector2Int gridPos, int typeValue){
          //upgrade the gem  
-                     //if the grid value is not null, return
-            if (grid.GetValue(gridPos.x, gridPos.y) != null) return;
-            //retrieve the value using gridpos and the matchedgems dictionary
+            var x = gridPos.x;
+            var y = gridPos.y;
             //destroy the gem at gridpos
             var gem = grid.GetValue(gridPos.x, gridPos.y).GetValue();
+            grid.SetValue(x, y, null);
             Destroy(gem.gameObject);
             //create a new gem at gridpos
-            
-            gem = Instantiate(gemPrefab, grid.GetWorldPositionCenter(gridPos.x, gridPos.y), Quaternion.identity, transform);
-            if (typeValue != 7){
-                typeValue++;
+            if (typeValue != 8){
+            CreateGem(x, y, typeValue);
             }
-            gem.SetType(gemTypes[typeValue]);
-            var gridObject = new GridObject<Gem>(grid, gridPos.x, gridPos.y);
-            gridObject.SetValue(gem);
-            grid.SetValue(gridPos.x, gridPos.y, gridObject);
-            
-            var matchedGemObject = grid.GetValue(gridPos.x, gridPos.y).GetValue();
- 
-           
- 
-            grid.SetValue(matchedGem.x, matchedGem.y, gridObject);
-            
-           
-            
+
+            if (grid.GetValue(x, y) == null) Debug.Log("grid value is null");
         }
  
         IEnumerator FillEmptySpots() {
@@ -234,25 +295,41 @@ namespace Match3 {
                 }
             }
         }
- 
-        IEnumerator ExplodeGems(List<Vector2Int> matches) {
-            audioManager.PlayPop();
-
-            foreach (var match in matches) {
-                var gem = grid.GetValue(match.x, match.y).GetValue();
-                grid.SetValue(match.x, match.y, null);
-
-                ExplodeVFX(match);
-                
-                gem.transform.DOPunchScale(Vector3.one * 0.1f, 0.1f, 1, 0.5f);
-                
-                yield return new WaitForSeconds(0f);
-                
-                //if the gem is not in the updated list, destroy it
-                if(!updated.Contains(match)){Destroy(gem.gameObject, 0.1f);} 
-            }      
+ IEnumerator ExplodeGems(List<Vector2Int> matches) {
+    audioManager.PlayPop();
+    //go through each match in matches and make sure there are no null values, remove them if there are
+    for (int i = 0; i < matches.Count; i++)
+    {
+        if (grid.GetValue(matches[i].x, matches[i].y).GetValue() == null)
+        {
+            matches.Remove(matches[i]);
+            i--;
         }
- 
+    }
+
+    foreach (var match in matches) {
+        if (grid.GetValue(match.x, match.y).GetValue() == null) continue;
+        var gem = grid.GetValue(match.x, match.y).GetValue();
+        if (!updated.Contains(match))
+        {
+            grid.SetValue(match.x, match.y, null);
+        }
+        
+
+        ExplodeVFX(match);
+        
+        gem.transform.DOPunchScale(Vector3.one * 0.1f, 0.1f, 1, 0.5f);
+        
+        yield return new WaitForSeconds(0.1f);
+        
+        //if the gem is not in the updated list, destroy it
+        if(!updated.Contains(match))
+        {
+            Destroy(gem.gameObject);
+        } 
+    }     
+    matches.Clear(); 
+}
           /*  foreach (KeyValuePair<Vector2Int, int> kvp in matchedGems)
                 {
                     Debug.Log("Key = {0}, Value = {1}"+ kvp.Key + kvp.Value);
@@ -382,7 +459,7 @@ List<Vector2Int> isConnected(Vector2Int p, bool main)
     foreach(Vector2Int dir in directions) //Checking if there is 2 or more same shapes in the directions
     {
         //check if the direction is valid first
-        if (!IsValidPosition(p + dir)) break;
+        //if (!IsValidPosition(p + dir)) break;
         
         List<Vector2Int> line = new List<Vector2Int>();
 
@@ -451,7 +528,7 @@ List<Vector2Int> isConnected(Vector2Int p, bool main)
         
 
         int GetGemTypeValue(Vector2Int gridPos) {
-            if (IsValidPosition(gridPos)) {
+            if (IsValidPosition(gridPos) && !IsEmptyPosition(gridPos) ){
                 var gem = grid.GetValue(gridPos.x, gridPos.y);
                 int blah = gem.GetValue().Value;
                // Debug.Log("poobar gem value " + blah.ToString());
@@ -474,20 +551,7 @@ List<Vector2Int> isConnected(Vector2Int p, bool main)
             grid.SetValue(x, y, gridObject);
         }
  
-        void UpgradeGem(Gem gem)
-        {   
-            //get the x and y position of the gem
-            var x = (int) gem.transform.position.x;
-            var y = (int) gem.transform.position.y;
-            int val = gem.Value;
-           //destroy the gem
-           grid.SetValue(x, y, null);
-            Destroy(gem.gameObject);
-            //replace the gridobject with a new one
-            CreateGem(x, y, val);
-            //if the grid value is null let us know
-            if (grid.GetValue(x, y) == null) Debug.Log("grid value is null");
-        }
+
 
         void DeselectGem() => selectedGem = new Vector2Int(-1, -1);
         void SelectGem(Vector2Int gridPos) => selectedGem = gridPos;

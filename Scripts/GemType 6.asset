@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59b43713026d4c96ad40a9c6a7f55663, type: 3}
   m_Name: GemType 6
   m_EditorClassIdentifier: 
-  sprite: {fileID: 21300000, guid: 94bcaef94d67aa448a402beb573118bb, type: 3}
+  sprite: {fileID: 0}

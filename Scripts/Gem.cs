@@ -30,10 +30,10 @@ namespace Match3 {
                 case "chest":
                     this.Value = 5;
                     break;
-                case "betterChest":
+                case "betterchest":
                     this.Value = 6;
                     break;
-                case "bettererChest":
+                case "bettererchest":
                     this.Value = 7;
                     break;
                 case "vault":
@@ -73,8 +73,8 @@ namespace Match3 {
         gold = 3,
         bag = 4,
         chest = 5,
-        betterChest = 6,
-        bettererChest = 7,
+        betterchest = 6,
+        bettererchest = 7,
         vault = 8
         
     }
@@ -120,36 +120,6 @@ namespace Match3 {
                  GetComponent<SpriteRenderer>().sprite = type.sprite;
                 break;
         }    
-       switch (this.Value)
-        {
-            case 1:
-                GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-            case 2:
-                 GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-            case 3:
-                 GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-            case 4:
-                 GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-            case 5:
-                 GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-            case 6:
-                 GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-            case 7:
-                 GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-            case 8:
-                 GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-            default:
-                 GetComponent<SpriteRenderer>().sprite = type.sprite;
-                break;
-        }
 
     }
     }
